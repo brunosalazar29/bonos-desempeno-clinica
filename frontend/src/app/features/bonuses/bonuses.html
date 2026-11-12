@@ -1,0 +1,314 @@
+<section class="bonuses-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Recursos Humanos</p>
+      <h1>Bonos de desempeño</h1>
+      <p class="page-description">Consulta y administra los bonos asignados a los empleados.</p>
+    </div>
+    <button type="button" class="button button-primary" (click)="openCreate()">
+      <span aria-hidden="true">＋</span>
+      Nuevo bono
+    </button>
+  </header>
+
+  <section class="panel filter-panel" aria-label="Filtros de búsqueda">
+    <form [formGroup]="filtersForm" (ngSubmit)="search()">
+      <div class="filter-grid">
+        <label>
+          <span>Área</span>
+          <select formControlName="departmentCode">
+            <option value="">Todas las áreas</option>
+            @for (department of departments(); track department.departmentCode) {
+              <option [value]="department.departmentCode">{{ department.departmentName }}</option>
+            }
+          </select>
+        </label>
+
+        <label>
+          <span>Número de empleado</span>
+          <input type="number" min="1" step="1" formControlName="employeeNumber" placeholder="Ej. 101" />
+        </label>
+
+        <label>
+          <span>Periodo</span>
+          <input type="month" [max]="currentMonthValue" formControlName="period" />
+        </label>
+
+        <label>
+          <span>Estado</span>
+          <select formControlName="bonusStateCode">
+            <option value="">Todos los estados</option>
+            @for (state of bonusStates(); track state.stateCode) {
+              <option [value]="state.stateCode">{{ state.stateDescription }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      <div class="filter-actions">
+        <button type="button" class="button button-secondary" (click)="clearFilters()" [disabled]="loading()">
+          Limpiar
+        </button>
+        <button type="submit" class="button button-primary" [disabled]="loading()">
+          Buscar
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel results-panel" aria-label="Listado de bonos">
+    <div class="results-heading">
+      <div>
+        <h2>Registros</h2>
+        <p>Los importes se muestran en soles.</p>
+      </div>
+      @if (!loading()) {
+        <span class="record-count">{{ totalRecords() }} registros</span>
+      }
+    </div>
+
+    @if (loading()) {
+      <div class="loading-state" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        Cargando bonos…
+      </div>
+    } @else if (rows().length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">▤</span>
+        <h3>No hay bonos para mostrar</h3>
+        <p>Prueba con otros filtros o registra un bono nuevo.</p>
+      </div>
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Acciones</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Periodo</th>
+              <th scope="col">Área</th>
+              <th scope="col">N.° empleado</th>
+              <th scope="col">Empleado</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Motivo</th>
+              <th scope="col" class="number-cell">Bruto</th>
+              <th scope="col" class="number-cell">Retención</th>
+              <th scope="col" class="number-cell">Neto</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.bonusId) {
+              <tr>
+                <td>
+                  @if (row.bonusStateCode === BonusStates.Registered) {
+                    <div class="row-actions">
+                      <button type="button" class="icon-button cancel-action" (click)="cancelBonus(row)" [attr.aria-label]="'Anular bono de ' + row.employeeName" title="Anular">
+                        Anular
+                      </button>
+                      <button type="button" class="icon-button delete-action" (click)="deleteBonus(row)" [attr.aria-label]="'Eliminar bono de ' + row.employeeName" title="Eliminar">
+                        Eliminar
+                      </button>
+                    </div>
+                  } @else {
+                    <span class="muted">—</span>
+                  }
+                </td>
+                <td><span class="status-pill" [class]="'status-pill ' + row.bonusStateCode">{{ row.bonusStateDescription }}</span></td>
+                <td>{{ row.period.slice(0, 7) }}</td>
+                <td>{{ row.departmentName }}</td>
+                <td>{{ row.departmentCode }}-{{ row.employeeNumber }}</td>
+                <td class="employee-cell">{{ row.employeeName }}</td>
+                <td>
+                  <span class="cell-main">{{ row.bonusTypeDescription }}</span>
+                  @if (row.bonusTypeId === BonusTypes.FixedAmount) {
+                    <span class="cell-detail">{{ row.fixedAmount | currency: 'PEN' : 'symbol' : '1.2-2' : 'es-PE' }}</span>
+                  } @else {
+                    <span class="cell-detail">{{ row.salaryPercentage | number: '1.0-4' }} %</span>
+                  }
+                </td>
+                <td>{{ row.reasonDescription }}</td>
+                <td class="number-cell">{{ row.grossAmount | currency: 'PEN' : 'symbol' : '1.2-2' : 'es-PE' }}</td>
+                <td class="number-cell">{{ row.taxAmount | currency: 'PEN' : 'symbol' : '1.2-2' : 'es-PE' }}</td>
+                <td class="number-cell net-cell">{{ row.netAmount | currency: 'PEN' : 'symbol' : '1.2-2' : 'es-PE' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="pagination">
+        <span>Mostrando {{ firstRow() }}–{{ lastRow() }} de {{ totalRecords() }}</span>
+        <div class="pagination-controls" aria-label="Paginación">
+          <button type="button" class="button button-secondary" (click)="changePage(pageIndex() - 1)" [disabled]="pageIndex() <= 1">
+            Anterior
+          </button>
+          <span>Página {{ pageIndex() }} de {{ totalPages() }}</span>
+          <button type="button" class="button button-secondary" (click)="changePage(pageIndex() + 1)" [disabled]="pageIndex() >= totalPages()">
+            Siguiente
+          </button>
+        </div>
+      </footer>
+    }
+  </section>
+</section>
+
+@if (modalOpen()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <section
+      class="bonus-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bonus-modal-title"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="closeModal()"
+    >
+      <header class="modal-header">
+        <div>
+          <p class="eyebrow">Nuevo registro</p>
+          <h2 id="bonus-modal-title">Registrar bono</h2>
+        </div>
+        <button type="button" class="modal-close" aria-label="Cerrar" (click)="closeModal()">×</button>
+      </header>
+
+      <div class="modal-body">
+        <section class="employee-search-block">
+          <h3>Buscar empleado</h3>
+          <form [formGroup]="employeeSearchForm" (ngSubmit)="findEmployee()">
+            <div class="employee-search-grid">
+              <label>
+                <span>Área</span>
+                <select formControlName="departmentCode">
+                  <option value="">Selecciona un área</option>
+                  @for (department of departments(); track department.departmentCode) {
+                    <option [value]="department.departmentCode">{{ department.departmentName }}</option>
+                  }
+                </select>
+                @if (employeeSearchForm.controls.departmentCode.touched && employeeSearchForm.controls.departmentCode.invalid) {
+                  <small class="field-error">Selecciona un área.</small>
+                }
+              </label>
+              <label>
+                <span>Número de empleado</span>
+                <input type="number" min="1" step="1" formControlName="employeeNumber" placeholder="Ej. 101" />
+                @if (employeeSearchForm.controls.employeeNumber.touched && employeeSearchForm.controls.employeeNumber.invalid) {
+                  <small class="field-error">Ingresa un número de empleado válido.</small>
+                }
+              </label>
+              <button type="submit" class="button button-secondary search-employee-button" [disabled]="searchingEmployee()">
+                {{ searchingEmployee() ? 'Buscando…' : 'Buscar' }}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        @if (employee(); as foundEmployee) {
+          <section class="employee-summary">
+            <div class="employee-summary-heading">
+              <span class="employee-avatar" aria-hidden="true">{{ foundEmployee.fullName.slice(0, 1) }}</span>
+              <div>
+                <h3>{{ foundEmployee.fullName }}</h3>
+                <p>{{ foundEmployee.departmentCode }}-{{ foundEmployee.employeeNumber }}</p>
+              </div>
+            </div>
+            <div class="employee-facts">
+              <div><span>Fecha de ingreso</span><strong>{{ foundEmployee.hireDate | date: 'dd/MM/yyyy' }}</strong></div>
+              <div><span>Sueldo mensual</span><strong>{{ foundEmployee.monthlySalary | currency: 'PEN' : 'symbol' : '1.2-2' : 'es-PE' }}</strong></div>
+              <div><span>Retención</span><strong>{{ foundEmployee.taxRate | number: '1.2-2' }} %</strong></div>
+            </div>
+          </section>
+
+          <form class="bonus-entry-form" [formGroup]="bonusForm" (ngSubmit)="saveBonus()">
+            <h3>Datos del bono</h3>
+            <div class="entry-grid">
+              <label>
+                <span>Periodo</span>
+                <input type="month" [max]="currentMonthValue" formControlName="period" />
+                @if (bonusForm.controls.period.touched && bonusForm.controls.period.hasError('required')) {
+                  <small class="field-error">Selecciona un periodo.</small>
+                }
+                @if (bonusForm.controls.period.touched && bonusForm.controls.period.hasError('futurePeriod')) {
+                  <small class="field-error">El periodo no puede ser posterior al mes actual.</small>
+                }
+              </label>
+              <label>
+                <span>Tipo de bono</span>
+                <select formControlName="bonusTypeId" (change)="onBonusTypeChange()">
+                  @for (type of bonusTypes(); track type.bonusTypeId) {
+                    <option [ngValue]="type.bonusTypeId">{{ type.bonusTypeDescription }}</option>
+                  }
+                </select>
+              </label>
+              <label>
+                <span>{{ valueLabel() }}</span>
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    min="0.01"
+                    [max]="valueMax()"
+                    step="0.01"
+                    formControlName="value"
+                    [placeholder]="bonusForm.controls.bonusTypeId.value === BonusTypes.FixedAmount ? '0.00' : '0.00'"
+                  />
+                  <span>{{ bonusForm.controls.bonusTypeId.value === BonusTypes.FixedAmount ? 'S/' : '%' }}</span>
+                </div>
+                @if (bonusForm.controls.value.touched && bonusForm.controls.value.hasError('min')) {
+                  <small class="field-error">El valor debe ser mayor que cero.</small>
+                }
+                @if (bonusForm.controls.value.touched && bonusForm.controls.value.hasError('max')) {
+                  <small class="field-error">
+                    {{
+                      bonusForm.controls.bonusTypeId.value === BonusTypes.FixedAmount
+                        ? 'El monto fijo no puede superar el sueldo mensual.'
+                        : 'El porcentaje no puede superar 100.'
+                    }}
+                  </small>
+                }
+              </label>
+              <label>
+                <span>Motivo</span>
+                <select formControlName="reasonCode">
+                  <option value="">Selecciona un motivo</option>
+                  @for (reason of bonusReasons(); track reason.reasonCode) {
+                    <option [value]="reason.reasonCode">{{ reason.reasonDescription }}</option>
+                  }
+                </select>
+                @if (bonusForm.controls.reasonCode.touched && bonusForm.controls.reasonCode.invalid) {
+                  <small class="field-error">Selecciona un motivo activo.</small>
+                }
+              </label>
+            </div>
+
+            @if (preview(); as amounts) {
+              <section class="preview-card" aria-live="polite">
+                <div class="preview-heading">
+                  <span class="preview-icon" aria-hidden="true">≈</span>
+                  <div>
+                    <h3>Vista previa</h3>
+                    <p>Los importes finales se calculan y validan en el servidor.</p>
+                  </div>
+                </div>
+                <div class="preview-values">
+                  <div><span>Bruto</span><strong>{{ amounts.gross | currency: 'PEN' : 'symbol' : '1.2-2' : 'es-PE' }}</strong></div>
+                  <div><span>Retención</span><strong>{{ amounts.tax | currency: 'PEN' : 'symbol' : '1.2-2' : 'es-PE' }}</strong></div>
+                  <div><span>Neto</span><strong class="preview-net">{{ amounts.net | currency: 'PEN' : 'symbol' : '1.2-2' : 'es-PE' }}</strong></div>
+                </div>
+              </section>
+            }
+
+            <footer class="modal-actions">
+              <button type="button" class="button button-secondary" (click)="closeModal()" [disabled]="saving()">Cancelar</button>
+              <button type="submit" class="button button-primary" [disabled]="saving() || bonusForm.invalid">
+                {{ saving() ? 'Guardando…' : 'Guardar bono' }}
+              </button>
+            </footer>
+          </form>
+        } @else {
+          <div class="employee-prompt">
+            <span aria-hidden="true">⌕</span>
+            <p>Busca un empleado activo para continuar con el registro del bono.</p>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+}

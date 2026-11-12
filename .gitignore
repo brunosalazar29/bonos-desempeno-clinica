@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/.angular/
+**/dist/
+**/TestResults/
+**/coverage/
+**/_pdf_render/
+**/*.pdf
+.env
+.env.*
+!.env.example
+backend/**/appsettings.Development.json
+/.run/
+/.tools/
